@@ -282,3 +282,7 @@ dotnet run --project dotnet/OpenHarness.Api -c Release --no-build -- run --outpu
 
 Note the harness only fails on agent *errors*, so a green CI run means "nothing threw," not "all outputs
 correct" — correctness review stays a human step.
+
+## License
+
+MIT © Buckley Builds LLC — see [LICENSE](LICENSE).

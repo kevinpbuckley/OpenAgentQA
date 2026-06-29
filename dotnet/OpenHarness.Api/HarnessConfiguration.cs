@@ -171,10 +171,52 @@ public sealed class HarnessConfiguration(string workspace)
     /// <summary>Display names of the skills in a directory (the skill folder name, or the file name for legacy flat skills).</summary>
     public IReadOnlyList<string> ListSkillNames(string skillsDir) =>
         DiscoverSkillFiles(skillsDir)
-            .Select(file => Path.GetFileName(file).Equals("SKILL.md", StringComparison.OrdinalIgnoreCase)
-                ? Path.GetFileName(Path.GetDirectoryName(file))!
-                : Path.GetFileNameWithoutExtension(file))
+            .Select(file => SkillNameFor(file))
             .ToList();
+
+    /// <summary>
+    /// The skills the agent advertises (name + description from each SKILL.md). This is the
+    /// "what was available" set — pairing it with which skills actually loaded lets the
+    /// downstream analyzer see skills that were advertised but never triggered.
+    /// </summary>
+    public IReadOnlyList<SkillInfo> AdvertisedSkills(string skillsDir)
+    {
+        var result = new List<SkillInfo>();
+        foreach (var file in DiscoverSkillFiles(skillsDir))
+        {
+            var (name, description) = ReadSkillMeta(file, SkillNameFor(file));
+            result.Add(new SkillInfo(name, description));
+        }
+        return result;
+    }
+
+    private static string SkillNameFor(string file) =>
+        Path.GetFileName(file).Equals("SKILL.md", StringComparison.OrdinalIgnoreCase)
+            ? Path.GetFileName(Path.GetDirectoryName(file))!
+            : Path.GetFileNameWithoutExtension(file);
+
+    /// <summary>Parse the <c>name</c> + <c>description</c> from a SKILL.md's YAML frontmatter (single-line values).</summary>
+    private static (string Name, string? Description) ReadSkillMeta(string file, string fallbackName)
+    {
+        try
+        {
+            var text = File.ReadAllText(file);
+            if (!text.StartsWith("---", StringComparison.Ordinal)) return (fallbackName, null);
+            var end = text.IndexOf("\n---", 3, StringComparison.Ordinal);
+            if (end < 0) return (fallbackName, null);
+            string? name = null, description = null;
+            foreach (var rawLine in text[3..end].Split('\n'))
+            {
+                var line = rawLine.Trim();
+                if (name is null && line.StartsWith("name:", StringComparison.OrdinalIgnoreCase))
+                    name = line[5..].Trim().Trim('"', '\'');
+                else if (description is null && line.StartsWith("description:", StringComparison.OrdinalIgnoreCase))
+                    description = line[12..].Trim().Trim('"', '\'');
+            }
+            return (string.IsNullOrWhiteSpace(name) ? fallbackName : name!, description);
+        }
+        catch { return (fallbackName, null); }
+    }
 
     private JsonElement ReadConfigRoot()
     {

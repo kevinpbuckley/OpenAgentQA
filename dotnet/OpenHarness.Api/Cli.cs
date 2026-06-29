@@ -15,6 +15,7 @@ internal static class Cli
         "list" => Task.FromResult(ListCommand(args, workspace)),
         "init" => Task.FromResult(InitCommand(workspace)),
         "issues" => Task.FromResult(IssuesCommand(args, workspace)),
+        "compare" => Task.FromResult(CompareCommand(args, workspace)),
         _ => Task.FromResult(Unknown(command)),
     };
 
@@ -43,7 +44,8 @@ internal static class Cli
 
         Console.WriteLine("\n  OpenHarness — running tests via Microsoft Agent Framework\n");
         var request = new RunRequest(files.Count > 0 ? files : null, null, model);
-        var report = await coordinator.RunToCompletionAsync(request);
+        var job = await coordinator.RunToCompletionAsync(request);
+        var report = job.Report!;
 
         switch (output)
         {
@@ -68,7 +70,26 @@ internal static class Cli
             Console.WriteLine($"JSON report written to {basePath}.json");
         }
 
-        Console.WriteLine("\n  Logs saved to .harness/logs/\n");
+        Console.WriteLine($"\n  Logs saved to .harness/logs/   Run id: {job.Id}");
+        Console.WriteLine($"  Compare against another run:  compare {job.Id} <other-run-id>\n");
+        return 0;
+    }
+
+    private static int CompareCommand(string[] args, string workspace)
+    {
+        var options = ParseOptions(args);
+        if (options.Positionals.Count < 2)
+        {
+            Console.Error.WriteLine("Usage: compare <before-run-id> <after-run-id>");
+            return 1;
+        }
+        var comparison = RunComparer.Compare(workspace, options.Positionals[0], options.Positionals[1]);
+        if (comparison is null)
+        {
+            Console.Error.WriteLine("One or both runs not found under .harness/runs/.");
+            return 1;
+        }
+        Reports.ConsoleComparison(comparison);
         return 0;
     }
 

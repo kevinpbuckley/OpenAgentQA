@@ -109,12 +109,13 @@ public sealed class RunCoordinator(HarnessConfiguration configuration, AgentRunt
         return job;
     }
 
-    /// <summary>Run to completion and return the report. Used by the headless CLI.</summary>
-    public async Task<RunReport> RunToCompletionAsync(RunRequest request)
+    /// <summary>Run to completion and return the finished job (report + id). Used by the headless CLI.</summary>
+    public async Task<RunJob> RunToCompletionAsync(RunRequest request)
     {
         var (job, config) = CreateJob(request);
         await ExecuteAsync(job, request, config);
-        return job.Report ?? new RunReport(job.StartedAt, 0, job.Total, [], [], config);
+        job.Report ??= new RunReport(job.StartedAt, 0, job.Total, [], [], config);
+        return job;
     }
 
     private (RunJob Job, HarnessConfig Config) CreateJob(RunRequest request)
@@ -149,6 +150,9 @@ public sealed class RunCoordinator(HarnessConfiguration configuration, AgentRunt
     {
         var started = Stopwatch.StartNew();
         var results = new ConcurrentBag<TestResult>();
+        // The active agent's environment (same for every test in the run) — captured once.
+        IReadOnlyList<SkillInfo>? advertisedSkills = null;
+        IReadOnlyList<ToolInfo>? availableTools = null;
         var workerCount = Math.Clamp(request.Parallel ?? config.Parallel, 1, 20);
         try
         {
@@ -168,7 +172,12 @@ public sealed class RunCoordinator(HarnessConfiguration configuration, AgentRunt
                 try
                 {
                     var chat = await agentRuntime.RunAsync(test.Prompt, null, test.ModelOverride ?? request.Model, test.TemperatureOverride, cancellationToken);
-                    var result = new TestResult(test, chat.Response, stopwatch.ElapsedMilliseconds, chat.ToolCalls, chat.TokenUsage, null, startedAt, DateTimeOffset.UtcNow, chat.Conversation);
+                    lock (job)
+                    {
+                        advertisedSkills ??= chat.AdvertisedSkills;
+                        availableTools ??= chat.AvailableTools;
+                    }
+                    var result = new TestResult(test, chat.Response, stopwatch.ElapsedMilliseconds, chat.ToolCalls, chat.TokenUsage, null, startedAt, DateTimeOffset.UtcNow, chat.Conversation, chat.LoadedSkills);
                     results.Add(result);
                     entry.Status = "completed";
                     entry.DurationMs = result.DurationMs;
@@ -199,7 +208,7 @@ public sealed class RunCoordinator(HarnessConfiguration configuration, AgentRunt
 
             var orderedResults = results.OrderBy(result => result.Test.Path, StringComparer.OrdinalIgnoreCase).ToList();
             var logs = SaveLogs(orderedResults);
-            job.Report = new RunReport(job.StartedAt, started.ElapsedMilliseconds, orderedResults.Count, logs, orderedResults, config);
+            job.Report = new RunReport(job.StartedAt, started.ElapsedMilliseconds, orderedResults.Count, logs, orderedResults, config, advertisedSkills, availableTools);
             job.Status = "completed";
             SaveReport(job.Report);
             File.WriteAllText(Path.Combine(job.Directory, "report.json"), JsonSerializer.Serialize(job.Report, JsonOptions));

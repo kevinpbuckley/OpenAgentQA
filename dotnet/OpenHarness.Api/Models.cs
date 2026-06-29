@@ -45,12 +45,25 @@ public sealed record TokenUsage(long Prompt, long Completion, long Total, long C
 /// <summary>One assistant turn in the reconstructed conversation: the model's text for that
 /// step, the tool calls it made (with results), and that single LLM call's token/cost usage.</summary>
 public sealed record ConversationTurn(string Role, string? Text, IReadOnlyList<ToolCallTrace> ToolCalls, TokenUsage? Usage);
-public sealed record TestResult(TestCase Test, string Response, long DurationMs, IReadOnlyList<ToolCallTrace> Trace, TokenUsage? TokenUsage, string? Error, DateTimeOffset StartedAt = default, DateTimeOffset CompletedAt = default, IReadOnlyList<ConversationTurn>? Conversation = null);
-public sealed record RunReport(DateTimeOffset StartedAt, long DurationMs, int Total, IReadOnlyList<string> Logs, IReadOnlyList<TestResult> Results, HarnessConfig Config);
+public sealed record TestResult(TestCase Test, string Response, long DurationMs, IReadOnlyList<ToolCallTrace> Trace, TokenUsage? TokenUsage, string? Error, DateTimeOffset StartedAt = default, DateTimeOffset CompletedAt = default, IReadOnlyList<ConversationTurn>? Conversation = null, IReadOnlyList<string>? LoadedSkills = null);
+public sealed record RunReport(DateTimeOffset StartedAt, long DurationMs, int Total, IReadOnlyList<string> Logs, IReadOnlyList<TestResult> Results, HarnessConfig Config, IReadOnlyList<SkillInfo>? AdvertisedSkills = null, IReadOnlyList<ToolInfo>? AvailableTools = null);
+
+/// <summary>A skill the active agent advertises (name + description from its SKILL.md).</summary>
+public sealed record SkillInfo(string Name, string? Description);
+/// <summary>An MCP tool the active agent had available during the run (server, name, description).</summary>
+public sealed record ToolInfo(string Server, string Name, string? Description);
+
+/// <summary>Deterministic per-run metrics, for the run-to-run comparison scoreboard.</summary>
+public sealed record RunMetrics(
+    int Tests, int Passed, int Errored, int ToolCalls, int AdvertisedSkills,
+    int DistinctSkillsLoaded, int LoadSkillCalls, long PromptTokens, long CompletionTokens,
+    long TotalTokens, long CachedTokens, double Cost, long DurationMs);
+public sealed record TestDelta(string Test, string Change, int ToolCallsBefore, int ToolCallsAfter);
+public sealed record RunComparison(string RunBefore, string RunAfter, RunMetrics Before, RunMetrics After, IReadOnlyList<TestDelta> Changes);
 
 public sealed record ChatRequest(string Message, IReadOnlyList<ChatTurn>? Conversation);
 public sealed record ChatTurn(string Role, string Content);
-public sealed record ChatResult(string Response, IReadOnlyList<ToolCallTrace> ToolCalls, TokenUsage? TokenUsage, IReadOnlyList<ConversationTurn>? Conversation = null);
+public sealed record ChatResult(string Response, IReadOnlyList<ToolCallTrace> ToolCalls, TokenUsage? TokenUsage, IReadOnlyList<ConversationTurn>? Conversation = null, IReadOnlyList<ToolInfo>? AvailableTools = null, IReadOnlyList<SkillInfo>? AdvertisedSkills = null, IReadOnlyList<string>? LoadedSkills = null);
 public sealed record RunRequest(IReadOnlyList<string>? Files, int? Parallel, string? Model);
 public sealed record SetAgentRequest(string Agent);
 

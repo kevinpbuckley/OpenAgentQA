@@ -147,9 +147,57 @@ async function renderRunsPage() {
             </tr>`).join('')}</tbody>
         </table></div>`}
     </div>
+
+    ${runs.length >= 2 ? html`
+    <div class="card">
+      <div class="card-header">Compare runs <span style="font-weight:400;font-size:13px;color:var(--text-muted)">— did a skill / prompt / tool change help?</span></div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+        <label style="font-size:12px;color:var(--text-muted)">before</label>
+        <select id="cmp-before">${runs.map((r, i) => `<option value="${escape(r.id)}" ${i === 1 ? 'selected' : ''}>${escape(r.id)}</option>`).join('')}</select>
+        <label style="font-size:12px;color:var(--text-muted)">after</label>
+        <select id="cmp-after">${runs.map((r, i) => `<option value="${escape(r.id)}" ${i === 0 ? 'selected' : ''}>${escape(r.id)}</option>`).join('')}</select>
+        <button class="btn btn-sm btn-primary" type="button" onclick="compareRuns()">Compare</button>
+      </div>
+      <div id="cmp-result"></div>
+    </div>` : ''}
+
     <div id="run-prompts"></div>
   `);
 }
+
+window.compareRuns = async function() {
+  const before = document.getElementById('cmp-before').value;
+  const after = document.getElementById('cmp-after').value;
+  const area = document.getElementById('cmp-result');
+  if (before === after) { area.innerHTML = '<div style="color:var(--yellow);margin-top:10px">Pick two different runs.</div>'; return; }
+  area.innerHTML = '<div style="color:var(--text-muted);margin-top:10px">Comparing…</div>';
+  try {
+    const c = await API.get(`/api/runs/${encodeURIComponent(before)}/compare/${encodeURIComponent(after)}`);
+    const rows = [
+      ['Tests passed', 'passed', true], ['Tests errored', 'errored', false], ['Tool calls', 'toolCalls', false],
+      ['Skills advertised', 'advertisedSkills', true], ['Distinct skills loaded', 'distinctSkillsLoaded', true],
+      ['load_skill calls', 'loadSkillCalls', true], ['Prompt tokens', 'promptTokens', false],
+      ['Completion tokens', 'completionTokens', false], ['Cached tokens', 'cachedTokens', true],
+      ['Cost (USD)', 'cost', false], ['Duration (ms)', 'durationMs', false],
+    ];
+    const cell = (label, key, higherBetter) => {
+      const b = c.before[key], a = c.after[key], d = a - b;
+      const fmt = key === 'cost' ? (x => '$' + Number(x).toFixed(6)) : (x => Number(x).toLocaleString());
+      const color = d === 0 ? 'var(--text-muted)' : ((d > 0) === higherBetter ? 'var(--green)' : 'var(--red)');
+      const deltaTxt = d === 0 ? '' : ` (${d > 0 ? '+' : ''}${key === 'cost' ? d.toFixed(6) : d.toLocaleString()})`;
+      return `<tr><td>${label}</td><td style="text-align:right">${fmt(b)}</td><td style="text-align:right">${fmt(a)}</td><td style="color:${color}">${deltaTxt}</td></tr>`;
+    };
+    const changes = (c.changes || []).map(d => {
+      const col = d.change === 'fixed' ? 'var(--green)' : d.change === 'regressed' ? 'var(--red)' : 'var(--text-muted)';
+      return `<tr><td style="color:${col}">${escape(d.change)}</td><td colspan="3">${escape(d.test)} (tool calls ${d.toolCallsBefore} → ${d.toolCallsAfter})</td></tr>`;
+    }).join('');
+    area.innerHTML = html`<div class="table-wrap" style="margin-top:12px"><table>
+      <thead><tr><th>Metric</th><th style="text-align:right">before</th><th style="text-align:right">after</th><th>Δ</th></tr></thead>
+      <tbody>${rows.map(r => cell(r[0], r[1], r[2])).join('')}
+      ${changes ? `<tr><td colspan="4" style="padding-top:10px;color:var(--text-muted);font-size:12px">Per-test changes</td></tr>${changes}` : `<tr><td colspan="4" style="color:var(--text-muted);font-size:12px">No per-test status changes.</td></tr>`}
+      </tbody></table></div>`;
+  } catch (e) { area.innerHTML = `<div style="color:var(--red);margin-top:10px">${escape(e.message)}</div>`; }
+};
 
 window.showRunPrompts = async function(id) {
   const area = document.getElementById('run-prompts');

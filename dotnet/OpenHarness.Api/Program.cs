@@ -8,12 +8,12 @@ var workspace = FindWorkspace(Directory.GetCurrentDirectory());
 
 // Headless CLI commands run and exit; "serve" (or no args) starts the web UI.
 var command = args.Length > 0 ? args[0] : "serve";
-if (command is "run" or "list" or "init" or "issues")
+if (command is "run" or "list" or "init" or "issues" or "compare")
     return await Cli.RunAsync(command, args[1..], workspace);
 if (command is not "serve")
 {
     await Console.Error.WriteLineAsync($"Unknown command: {command}");
-    await Console.Error.WriteLineAsync("Commands: run, list, init, issues, serve");
+    await Console.Error.WriteLineAsync("Commands: run, list, init, issues, compare, serve");
     return 1;
 }
 
@@ -113,6 +113,8 @@ app.MapGet("/api/runs/{id}/artifacts/{artifact}", (string id, string artifact, R
 app.MapGet("/api/runs/{id}/prompts/{**path}", (string id, string path, RunCoordinator runs) => runs.GetPromptArtifact(id, path) ?? Results.NotFound(new { error = "Prompt artifact not found" }));
 app.MapGet("/api/runs/{id}/download", (string id, RunCoordinator runs) => runs.DownloadRun(id) ?? Results.NotFound(new { error = "Run not found" }));
 app.MapPost("/api/runs/{id}/open", (string id, RunCoordinator runs) => runs.OpenRun(id) ? Results.Ok(new { ok = true }) : Results.NotFound(new { error = "Run not found" }));
+app.MapGet("/api/runs/{before}/compare/{after}", (string before, string after, HarnessConfiguration config) =>
+    RunComparer.Compare(config.Workspace, before, after) is { } comparison ? Results.Ok(comparison) : Results.NotFound(new { error = "One or both runs not found" }));
 app.MapDelete("/api/runs/{id}", (string id, RunCoordinator runs) => runs.Delete(id) ? Results.Ok(new { ok = true }) : Results.NotFound(new { error = "Run not found" }));
 app.MapGet("/api/reports", (HarnessConfiguration config) => Results.Ok(ListJsonFiles(Path.Combine(config.Workspace, ".harness", "reports"))));
 app.MapGet("/api/reports/{name}", (string name, HarnessConfiguration config) => ReadJsonFile(Path.Combine(config.Workspace, ".harness", "reports"), name));

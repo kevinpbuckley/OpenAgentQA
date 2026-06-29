@@ -202,6 +202,7 @@ dotnet run --project dotnet/OpenHarness.Api -- run -o junit --report report.xml
 dotnet run --project dotnet/OpenHarness.Api -- init                  # scaffold Agents/Sample + config
 dotnet run --project dotnet/OpenHarness.Api -- issues list [-a]      # tracked failures (-a includes resolved)
 dotnet run --project dotnet/OpenHarness.Api -- issues show <id> | resolve <id> | summary
+dotnet run --project dotnet/OpenHarness.Api -- compare <before> <after>   # diff two runs (scoreboard)
 ```
 
 `run -o/--output`: `console` (default), `json`, `markdown`, `junit`. To run a different agent from the
@@ -220,6 +221,24 @@ The **Run Report** (`#/runs/<id>` in the web UI, or `report.json`) is the heart 
 - Links to the raw underlying data (for an AI to act on) and a button to open the run folder.
 
 When a test errors, an issue is auto-filed under `.harness/issues/` (also browsable on the **Issues** page).
+
+### Built for an AI to act on the results
+
+The output is structured so a coding agent can diagnose and fix the agent's skills / `agent.md` / MCP tools:
+
+- **What was in play vs what was used.** Each run's `report.json` records `advertisedSkills` (every
+  `SKILL.md`'s name + description) and `availableTools` (every connected MCP tool's name + description);
+  each test records `loadedSkills` (which skills the agent actually loaded). A skill **advertised but never
+  loaded** is the signal to sharpen its `description`; a tool that errors or gets called repeatedly points
+  at the tool. (The harness only captures these facts — the *reasoning* about root cause and fixes is left
+  to the AI you feed the results to.)
+- **Run-to-run comparison (scoreboard).** After the AI edits files and you re-run, diff the two runs to see
+  if it helped — pass/error counts, tool calls, **skill-trigger** counts, tokens, cost, and which tests
+  flipped (`fixed`/`regressed`). In the web UI use the **Compare runs** panel on the Runs page, or:
+  ```bash
+  dotnet run --project dotnet/OpenHarness.Api -- compare <before-run-id> <after-run-id>
+  ```
+  (`run` prints its run id; the API is `GET /api/runs/{before}/compare/{after}`.)
 
 ## Clean test environment (optional)
 

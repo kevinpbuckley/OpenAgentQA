@@ -124,6 +124,49 @@ internal static class Reports
         return xml.ToString();
     }
 
+    public static void ConsoleComparison(RunComparison c)
+    {
+        var output = System.Console.Out;
+        output.WriteLine("\n=======================================");
+        output.WriteLine("  OpenHarness - Run Comparison (scoreboard)");
+        output.WriteLine("=======================================");
+        output.WriteLine($"  before: {c.RunBefore}");
+        output.WriteLine($"  after:  {c.RunAfter}\n");
+
+        void Row(string label, double before, double after, bool higherIsBetter, string fmt = "0.####")
+        {
+            var delta = after - before;
+            var good = delta == 0 ? "" : (delta > 0) == higherIsBetter ? "  (better)" : "  (worse)";
+            var deltaStr = delta == 0 ? "" : $"   {(delta > 0 ? "+" : "")}{delta.ToString(fmt, CultureInfo.InvariantCulture)}{good}";
+            output.WriteLine($"  {label,-22} {before.ToString(fmt, CultureInfo.InvariantCulture),12} -> {after.ToString(fmt, CultureInfo.InvariantCulture),-12}{deltaStr}");
+        }
+
+        var b = c.Before; var a = c.After;
+        Row("Tests passed", b.Passed, a.Passed, true);
+        Row("Tests errored", b.Errored, a.Errored, false);
+        Row("Tool calls", b.ToolCalls, a.ToolCalls, false);
+        Row("Skills advertised", b.AdvertisedSkills, a.AdvertisedSkills, true);
+        Row("Distinct skills loaded", b.DistinctSkillsLoaded, a.DistinctSkillsLoaded, true);
+        Row("load_skill calls", b.LoadSkillCalls, a.LoadSkillCalls, true);
+        Row("Prompt tokens", b.PromptTokens, a.PromptTokens, false, "0");
+        Row("Completion tokens", b.CompletionTokens, a.CompletionTokens, false, "0");
+        Row("Cached tokens", b.CachedTokens, a.CachedTokens, true, "0");
+        Row("Cost (USD)", b.Cost, a.Cost, false, "0.######");
+        Row("Duration (ms)", b.DurationMs, a.DurationMs, false, "0");
+
+        if (c.Changes.Count > 0)
+        {
+            output.WriteLine("\n  Per-test changes:");
+            foreach (var d in c.Changes)
+                output.WriteLine($"    {d.Change,-20} {d.Test}   (tool calls {d.ToolCallsBefore} -> {d.ToolCallsAfter})");
+        }
+        else
+        {
+            output.WriteLine("\n  No per-test status changes.");
+        }
+        output.WriteLine("=======================================\n");
+    }
+
     public static void ConsoleIssues(IReadOnlyList<Issue> issues)
     {
         if (issues.Count == 0)

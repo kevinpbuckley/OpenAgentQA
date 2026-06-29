@@ -161,6 +161,20 @@ Each chat entry (`chat.jsonl`, both the run-level and per-prompt copies) and eac
 so per-test latency and token spend are visible without cross-referencing — the web UI's Run-results and
 Logs detail rows render both via `formatTokens`.
 
+**Capture completeness for the AI fixer (the consumer of results is an AI, not a human).** The harness
+captures deterministic *facts* (not analysis — root-causing is left to the downstream AI). `report.json`
+carries run-level `advertisedSkills` (name+description of every `SKILL.md` — `HarnessConfiguration.AdvertisedSkills`)
+and `availableTools` (server/name/description of every MCP tool that was connected, captured in `AgentRuntime`);
+each `TestResult` carries `loadedSkills` (which advertised skills the agent actually `load_skill`'d, from the
+trace — `ExtractLoadedSkills`). Advertised-vs-loaded is the key skill signal (a skill present but never loaded =
+fix its `description`), and only the harness knows the advertised set at run time, so it must capture it.
+
+**Run-to-run comparison (the scoreboard / reward signal).** [RunComparer](dotnet/OpenHarness.Api/RunComparer.cs)
+deterministically diffs two runs' `report.json` (`RunMetrics` + per-test `TestDelta`: fixed/regressed/tool-calls-changed)
+so you can tell whether a skill/prompt/tool edit helped without an LLM re-reading two transcripts. Exposed as
+CLI `compare <before-id> <after-id>` (prints via `Reports.ConsoleComparison`), `GET /api/runs/{before}/compare/{after}`,
+and a Compare panel on the Runs page. The `run` CLI command now prints the run id for this.
+
 **Per-tool-call timing.** Each `ToolCallTrace` also carries `startedAt`/`endedAt`/`durationMs`. These come
 from `TimedFunction` (in [AgentRuntime.cs](dotnet/OpenHarness.Api/AgentRuntime.cs)), a `DelegatingAIFunction`
 that wraps every MCP tool and records each invocation's clock without touching its name/schema/result.

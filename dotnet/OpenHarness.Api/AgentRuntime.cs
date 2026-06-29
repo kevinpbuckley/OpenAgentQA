@@ -31,10 +31,15 @@ public sealed class AgentRuntime(HarnessConfiguration configuration, ILogger<Age
         var connections = new List<McpConnection>();
         try
         {
+            // Record exactly which MCP tools were in play (server, name, description) so the
+            // analyzer can judge tool descriptions/coverage without re-deriving them.
+            var availableTools = new List<ToolInfo>();
             foreach (var server in config.McpServers)
             {
                 var connection = await McpConnection.ConnectAsync(server, logger, timeout.Token);
                 connections.Add(connection);
+                foreach (var tool in connection.Tools)
+                    availableTools.Add(new ToolInfo(server.Name, tool.Name, tool.Description));
             }
 
             // Wrap each tool so we record when each call started/ended — the report view
@@ -96,7 +101,13 @@ public sealed class AgentRuntime(HarnessConfiguration configuration, ILogger<Age
             var usages = callUsages.ToArray();
             var conversationTurns = BuildConversation(response, traces, [.. callTimings], usages);
             var totalCost = usages.Sum(usage => usage.Cost);
-            return new ChatResult(response.Text ?? string.Empty, traces, ExtractUsage(response, totalCost), conversationTurns);
+
+            // What was advertised vs what the agent actually loaded — the key skill signal.
+            var advertisedSkills = skillsDir is not null ? configuration.AdvertisedSkills(skillsDir) : [];
+            var loadedSkills = ExtractLoadedSkills(traces, advertisedSkills);
+
+            return new ChatResult(response.Text ?? string.Empty, traces, ExtractUsage(response, totalCost),
+                conversationTurns, availableTools, advertisedSkills, loadedSkills);
         }
         finally
         {
@@ -162,6 +173,26 @@ public sealed class AgentRuntime(HarnessConfiguration configuration, ILogger<Age
 
     private static TokenUsage ToTokenUsage(LlmCallUsage usage) =>
         new(usage.Prompt, usage.Completion, usage.Total, usage.Cached, usage.Cost);
+
+    /// <summary>
+    /// Which advertised skills the agent actually loaded, from the <c>load_skill</c> tool calls in the
+    /// trace (the provider's progressive-disclosure tool). A skill counts as loaded when its name
+    /// appears in a load_skill call's arguments. Deterministic — no interpretation.
+    /// </summary>
+    private static IReadOnlyList<string> ExtractLoadedSkills(IReadOnlyList<ToolCallTrace> traces, IReadOnlyList<SkillInfo> advertised)
+    {
+        if (advertised.Count == 0) return [];
+        var loaded = new List<string>();
+        foreach (var trace in traces)
+        {
+            if (!trace.Tool.Contains("load_skill", StringComparison.OrdinalIgnoreCase)) continue;
+            var input = System.Text.Json.JsonSerializer.Serialize(trace.Input);
+            foreach (var skill in advertised)
+                if (!loaded.Contains(skill.Name) && input.Contains(skill.Name, StringComparison.OrdinalIgnoreCase))
+                    loaded.Add(skill.Name);
+        }
+        return loaded;
+    }
 
     private static TokenUsage? ExtractUsage(AgentResponse response, double cost)
     {

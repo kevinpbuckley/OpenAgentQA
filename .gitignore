@@ -2,3 +2,7 @@ bin/
 obj/
 .harness/
 .env
+
+# Local / proprietary agents (bring your own). The Unreal agent targets a local
+# UE project + the VibeUE plugin and isn't part of the open repo.
+Agents/VibeUE-Unreal/

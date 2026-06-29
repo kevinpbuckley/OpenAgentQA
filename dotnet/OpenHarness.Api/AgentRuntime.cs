@@ -47,6 +47,7 @@ public sealed class AgentRuntime(HarnessConfiguration configuration, ILogger<Age
             var endpoint = new Uri("https://openrouter.ai/api/v1");
             var clientOptions = new OpenAIClientOptions { Endpoint = endpoint };
             clientOptions.AddPolicy(new OpenRouterCostPolicy(), PipelinePosition.PerCall);
+            clientOptions.AddPolicy(new OpenRouterAttributionPolicy(), PipelinePosition.PerCall);
             var openAi = new OpenAIClient(new ApiKeyCredential(apiKey), clientOptions);
             using IChatClient chatClient = openAi.GetChatClient(config.Model).AsIChatClient()
                 .AsBuilder()

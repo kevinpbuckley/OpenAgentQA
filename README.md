@@ -67,15 +67,18 @@ Each folder under `Agents/` is a self-contained agent:
 
 ```
 Agents/
-  VibeUE-Unreal/      # drives Unreal via VibeUE's MCP endpoint (was TestAgent/)
+  Sample/             # copy-me starter; runs with no MCP tools
     agent.md          # system prompt
-    skills/           # *.md appended to the system prompt (sorted)
+    skills/           # Agent Skills (each a folder with SKILL.md), served via MAF's AgentSkillsProvider
     mcp.json          # this agent's MCP servers
     agent.json        # overrides: description, testDir, setupScript, ...
-    clean-env.ps1     # this agent's "spin up clean instance" script
-  Sample/             # copy-me starter; runs with no MCP tools
-    agent.md  skills/  mcp.json  agent.json  tests/
+    tests/            # this agent's prompt files
+  <your-agent>/       # copy Sample/ and customize (add a clean-env.ps1, MCP servers, etc.)
 ```
+
+> The `VibeUE-Unreal` agent (which drives Unreal Engine via the VibeUE plugin against a local UE
+> project) is **git-ignored** — it's specific to that environment, so it isn't part of this repo.
+> Bring your own agent by copying `Agents/Sample/`.
 
 The **active agent** supplies the system prompt, skills, MCP tools, and may override the test directory
 and setup script (via `testDir`/`setupScript` in its `agent.json`). Pick it from the **selector in the

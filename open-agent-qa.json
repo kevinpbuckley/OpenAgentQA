@@ -3,7 +3,7 @@
     "provider": "openrouter",
     "model": "deepseek/deepseek-v4-flash",
     "agentsDir": "./Agents",
-    "agent": "VibeUE-Unreal",
+    "agent": "Sample",
     "testDir": "./tests",
     "temperature": 0.1,
     "maxSteps": 500,

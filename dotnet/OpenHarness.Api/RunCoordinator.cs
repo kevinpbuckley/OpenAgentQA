@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.SignalR;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.IO.Compression;
@@ -8,7 +7,7 @@ using System.Text.Json;
 
 namespace OpenHarness.Api;
 
-public sealed class RunCoordinator(HarnessConfiguration configuration, AgentRuntime agentRuntime, IHubContext<RunHub> hub, ILogger<RunCoordinator> logger)
+public sealed class RunCoordinator(HarnessConfiguration configuration, AgentRuntime agentRuntime, ILogger<RunCoordinator> logger)
 {
     private readonly ConcurrentDictionary<string, RunJob> _jobs = new();
 
@@ -165,7 +164,6 @@ public sealed class RunCoordinator(HarnessConfiguration configuration, AgentRunt
                 entry.Status = "running";
                 WriteSystemLog(job, $"Test started: {entry.Name}");
                 WritePromptLog(job, entry, "Prompt execution started.");
-                await PublishAsync(job);
                 var test = ReadTest(entry.Path);
                 var startedAt = DateTimeOffset.UtcNow;
                 var stopwatch = Stopwatch.StartNew();
@@ -202,7 +200,6 @@ public sealed class RunCoordinator(HarnessConfiguration configuration, AgentRunt
                 finally
                 {
                     lock (job) job.Completed++;
-                    await PublishAsync(job);
                 }
             });
 
@@ -232,7 +229,6 @@ public sealed class RunCoordinator(HarnessConfiguration configuration, AgentRunt
         finally
         {
             SaveJob(job);
-            await PublishAsync(job);
         }
     }
 
@@ -374,6 +370,4 @@ public sealed class RunCoordinator(HarnessConfiguration configuration, AgentRunt
         return $"{safeName}-{hash}";
     }
     private static void SaveJob(RunJob job) => File.WriteAllText(Path.Combine(job.Directory, "run.json"), JsonSerializer.Serialize(job, JsonOptions));
-
-    private Task PublishAsync(RunJob job) => hub.Clients.Group(job.Id).SendAsync("runProgress", job);
 }

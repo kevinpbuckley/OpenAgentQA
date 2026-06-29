@@ -49,14 +49,16 @@ the JUnit report to a test-reporter (with `continue-on-error`, so agent failures
 1. [Program.cs](dotnet/OpenHarness.Api/Program.cs) is the entrypoint. It first calls `FindWorkspace`,
    which walks **up** from the current directory looking for `open-agent-qa.json` — that file's
    directory is the workspace root for everything (config, tests, `.harness/` output). If `args[0]`
-   is `run`/`list`/`init`/`issues` it dispatches to [Cli.cs](dotnet/OpenHarness.Api/Cli.cs) and exits;
-   otherwise it builds an ASP.NET host, serves the static UI from `ui/`, and exposes the `/api/*`
-   endpoints + a SignalR `/hubs/runs` hub.
+   is `run`/`list`/`init`/`issues`/`compare` it dispatches to [Cli.cs](dotnet/OpenHarness.Api/Cli.cs) and
+   exits; otherwise it builds an ASP.NET host, serves the static UI from `ui/`, and exposes the `/api/*`
+   endpoints.
 2. Both paths share the same DI singletons: `HarnessConfiguration` → `AgentRuntime` → `RunCoordinator`.
 3. [RunCoordinator](dotnet/OpenHarness.Api/RunCoordinator.cs) discovers/accepts the test files, creates
    a `RunJob`, and runs tests via `Parallel.ForEachAsync` (degree = config `parallel`, clamped 1–20).
    Each test is parsed, sent to `AgentRuntime.RunAsync`, and its result + artifacts written to disk.
-   The CLI uses `RunToCompletionAsync`; the web UI uses `Start` (fire-and-forget) + SignalR progress.
+   The CLI uses `RunToCompletionAsync`; the web UI uses `Start` (fire-and-forget) and **polls**
+   `GET /api/tests/run/{id}` for progress (`pollRunJob`). There is no SignalR — it was removed as the
+   vanilla-JS UI never subscribed to it.
 4. [AgentRuntime](dotnet/OpenHarness.Api/AgentRuntime.cs) is the single agent entrypoint. Per call it
    connects every configured MCP server, collects their tools, builds a `ChatClientAgent` over an
    OpenRouter `IChatClient` with `.UseFunctionInvocation()`, runs the message loop, then reconstructs

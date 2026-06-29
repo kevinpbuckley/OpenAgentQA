@@ -22,7 +22,6 @@ var builder = WebApplication.CreateBuilder(hostArgs);
 builder.Services.AddSingleton(new HarnessConfiguration(workspace));
 builder.Services.AddSingleton<AgentRuntime>();
 builder.Services.AddSingleton<RunCoordinator>();
-builder.Services.AddSignalR();
 
 var app = builder.Build();
 var uiDirectory = Path.Combine(workspace, "ui");
@@ -126,7 +125,6 @@ app.MapPost("/api/chat", async (ChatRequest request, AgentRuntime runtime, Cance
     try { return Results.Ok(await runtime.RunAsync(request.Message, request.Conversation, token)); }
     catch (Exception error) { return Results.BadRequest(new { error = error.Message }); }
 });
-app.MapHub<RunHub>("/hubs/runs");
 app.MapFallbackToFile("index.html", new StaticFileOptions { FileProvider = new PhysicalFileProvider(uiDirectory) });
 
 app.Run();

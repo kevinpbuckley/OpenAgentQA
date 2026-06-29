@@ -38,7 +38,6 @@ internal static class Cli
         builder.Services.AddSingleton(new HarnessConfiguration(workspace));
         builder.Services.AddSingleton<AgentRuntime>();
         builder.Services.AddSingleton<RunCoordinator>();
-        builder.Services.AddSignalR();
         await using var app = builder.Build();
         var coordinator = app.Services.GetRequiredService<RunCoordinator>();
 

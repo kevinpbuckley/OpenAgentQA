@@ -1,0 +1,17 @@
+{
+  "open-agent-qa": {
+    "provider": "openrouter",
+    "model": "deepseek/deepseek-v4-flash",
+    "agentsDir": "./Agents",
+    "agent": "VibeUE-Unreal",
+    "testDir": "./tests",
+    "temperature": 0.1,
+    "maxSteps": 500,
+    "agentTimeoutMs": 1800000,
+    "parallel": 3,
+    "tracker": {
+      "enabled": false,
+      "dir": ".harness/issues"
+    }
+  }
+}

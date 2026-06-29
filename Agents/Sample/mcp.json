@@ -1,0 +1,10 @@
+{
+  "//": "MCP servers for this agent. Empty by default so the Sample agent runs with no tools.",
+  "//example": {
+    "mcpServers": {
+      "filesystem": { "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "."] },
+      "remote": { "type": "http", "url": "http://127.0.0.1:8000/mcp" }
+    }
+  },
+  "mcpServers": {}
+}

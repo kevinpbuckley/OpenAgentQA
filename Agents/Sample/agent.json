@@ -1,0 +1,8 @@
+{
+  "name": "Sample",
+  "description": "A minimal starter agent. Copy this folder to make your own: edit agent.md (system prompt), drop skill files in skills/, add MCP servers to mcp.json, and point testDir at your prompts.",
+  "agentMd": "agent.md",
+  "skillsDir": "skills",
+  "mcp": "mcp.json",
+  "testDir": "tests"
+}

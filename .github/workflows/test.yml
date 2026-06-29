@@ -1,0 +1,34 @@
+name: OpenAgentQA
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: "0 6 * * *"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - run: dotnet build dotnet/OpenHarness.Api/OpenHarness.Api.csproj -c Release
+
+      - name: Run agent tests
+        run: dotnet run --project dotnet/OpenHarness.Api -c Release --no-build -- run --report report.xml --output junit
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        continue-on-error: true
+
+      - uses: dorny/test-reporter@v1
+        if: success() || failure()
+        with:
+          name: Agent Test Results
+          path: report.xml
+          reporter: java-junit

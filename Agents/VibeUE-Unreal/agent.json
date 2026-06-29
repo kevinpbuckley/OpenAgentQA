@@ -1,0 +1,9 @@
+{
+  "name": "VibeUE-Unreal",
+  "description": "Drives Unreal Engine 5.8 through VibeUE's MCP endpoint (HTTP). Use to QA editor/Blueprint/asset automation.",
+  "agentMd": "agent.md",
+  "skillsDir": "skills",
+  "mcp": "mcp.json",
+  "testDir": "E:/Repo/QAClean/Plugins/VibeUE/test_prompts",
+  "setupScript": "clean-env.ps1"
+}

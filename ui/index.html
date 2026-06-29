@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenAgentQA</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+  <nav id="nav">
+    <div class="nav-brand">OpenAgentQA</div>
+    <div class="nav-links">
+      <a href="#/" class="nav-link">Dashboard</a>
+      <a href="#/chat" class="nav-link">Test Harness</a>
+      <a href="#/run" class="nav-link">Run</a>
+      <a href="#/runs" class="nav-link">Runs</a>
+      <a href="#/logs" class="nav-link">Logs</a>
+      <a href="#/config" class="nav-link">Config</a>
+      <a href="#/issues" class="nav-link">Issues <span id="issue-badge" class="badge"></span></a>
+    </div>
+    <div class="nav-agent" title="The active agent supplies the system prompt, skills, MCP tools and test directory. Stored in .env (OPENAGENTQA_AGENT).">
+      <span class="nav-agent-label">Agent</span>
+      <select id="agent-select" onchange="switchAgent(this.value)"></select>
+    </div>
+  </nav>
+
+  <main id="app">
+    <div class="loading">Loading...</div>
+  </main>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="/app.js"></script>
+</body>
+</html>
